@@ -2,24 +2,25 @@ name: Ping Streamlit app
 
 on:
   schedule:
-    - cron: "0 7 * * *"  # codziennie 07:00 UTC (~08:00 w Polsce zimą, ~09:00 latem)
+    - cron: "0 7 * * *"   # codziennie 07:00 UTC
   workflow_dispatch: {}
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping app (retry)
+      - name: Ping Streamlit
         run: |
-          set -e
           URL="https://investmentgame.streamlit.app/"
-          for i in 1 2 3 4 5; do
-            echo "Attempt $i..."
-            if curl -fsSL -m 20 "$URL" > /dev/null; then
-              echo "OK"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "Ping failed after retries"
-          exit 1
+          echo "Pinging $URL"
+
+          # retry + follow redirects + sensowny timeout + fail na złych statusach
+          curl -sS -L \
+            -A "Mozilla/5.0 (GitHub Actions ping)" \
+            --retry 5 \
+            --retry-all-errors \
+            --connect-timeout 15 \
+            --max-time 120 \
+            -o /dev/null \
+            -w "HTTP %{http_code}\n" \
+            "$URL"
