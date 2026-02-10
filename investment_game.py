@@ -378,7 +378,7 @@ def compute_player_scores():
     if concentration > 0.55 and share["BTC"] > 0.5:
         penalties += 1.0
 
-    rationality = 86.0 - 6.5 * penalties + 3.0 * bonuses
+    rationality = 85.0 - 6.5 * penalties + 3.0 * bonuses
     if risk > 80:
         rationality -= (risk - 80) * 0.25
 
@@ -598,6 +598,7 @@ elif st.session_state.page == "game1":
     show_game1()
 elif st.session_state.page == "game1_summary":
     show_game1_summary()
+
 
 
 
