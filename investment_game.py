@@ -305,11 +305,11 @@ def compute_player_scores():
 
     risk_raw = (
         0.90 * share["BTC"] +
-        0.45 * share["GOLD"] -
-        0.15 * share["SP500"] +
+        0.35 * share["GOLD"] -
+        0.30 * share["SP500"] +
         0.90 * share_lev +
         0.25 * concentration -
-        0.55 * share["CASH"]
+        0.75 * share["CASH"]
     )
     risk = int(max(0, min(100, round(50 + 70 * risk_raw))))
 
@@ -598,3 +598,4 @@ elif st.session_state.page == "game1":
     show_game1()
 elif st.session_state.page == "game1_summary":
     show_game1_summary()
+
