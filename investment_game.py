@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
 import random
-import textwrap  # ✅ żeby HTML na 100% renderował się jako HTML
+import textwrap  # Renderowanie HTML
 
-# --- KONFIGURACJA STRONY ---
+# Ustawienia strony aplikacji
 st.set_page_config(page_title="Gra Inwestycyjna", layout="centered")
 
-# --- STYLE CSS ---
+# Style CSS dla całej aplikacji
 st.markdown("""
 <style>
 .stButton>button { height: 3em; font-weight: bold; }
@@ -39,7 +39,7 @@ st.markdown("""
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 
-/* Kafelki podsumowania - HARD OVERRIDE na ellipsis Streamlit */
+/* Style kafelków podsumowania */
 .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px; }
 .summary-card {
     background: #ffffff;
@@ -50,7 +50,7 @@ footer {visibility: hidden;}
     min-width: 0;
 }
 
-/* Nadpisujemy wszystko w środku, żeby NIGDY nie robiło "..." */
+/* Wymuszamy pełne wyświetlanie tekstu bez "..." */
 .summary-card, .summary-card * {
     overflow: visible !important;
     text-overflow: clip !important;
@@ -78,8 +78,10 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
+# Liczba rund w grze
 TOTAL_ROUNDS = 40
 
+# Etykiety rund do wyświetlenia na ekranie
 LABELS_TEXT = [
     "wrz 22", "paź 22", "lis 22", "gru 22", "sty 23", "lut 23", "mar 23", "kwi 23", "maj 23", "cze 23",
     "lip 23", "sie 23", "wrz 23", "paź 23", "lis 23", "gru 23", "sty 24", "lut 24", "mar 24", "kwi 24",
@@ -87,23 +89,27 @@ LABELS_TEXT = [
     "mar 25", "kwi 25", "maj 25", "cze 25", "lip 25", "sie 25", "wrz 25", "paź 25", "lis 25", "gru 25"
 ]
 
+# Uzupełniamy listę historią do stałej długości, żeby wykresy miały stały rozmiar
 def pad_history(history_list, total_length):
     base = history_list[:total_length]
     padding = [None] * (total_length - len(base))
     return base + padding
 
+# Zmieniamy stronę w aplikacji i odświeżamy widok
 def next_page(page_name: str):
     st.session_state.page = page_name
     st.rerun()
 
+# Formatujemy liczbę jako PLN bez części dziesiętnej
 def fmt_pln_num(x: float) -> str:
     return f"{x:,.0f}".replace(",", " ")
 
+# Formatujemy wartość procentową z plusem dla dodatnich wyników
 def fmt_pct(x: float) -> str:
     sign = "+" if x >= 0 else ""
     return f"{sign}{x:.2f}%"
 
-# --- PARAMETRY ---
+# Parametry instrumentów do losowania zwrotów
 INSTRUMENTS = {
     "SP500": {
         "label": "S&P 500",
@@ -167,6 +173,7 @@ INSTRUMENTS = {
     }
 }
 
+# Wyliczamy lekką przewagę trendu na podstawie ostatnich zwrotów
 def streak_bias(instr_key: str, lookback: int = 4) -> float:
     if instr_key == "CASH":
         return 0.0
@@ -182,9 +189,11 @@ def streak_bias(instr_key: str, lookback: int = 4) -> float:
     raw = (score / lookback) * p["mom_strength"]
     return max(-p["mom_cap"], min(p["mom_cap"], raw))
 
+# Ograniczamy wartość do podanego zakresu
 def clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
+# Losujemy zwrot instrumentu z uwzględnieniem skrajnych zdarzeń i trendu
 def sample_return(instr_key: str) -> float:
     p = INSTRUMENTS[instr_key]
     if instr_key == "CASH":
@@ -202,10 +211,11 @@ def sample_return(instr_key: str) -> float:
 
     return clamp(r, p["ret_floor"], p["ret_cap"])
 
-# --- INICJALIZACJA STANU ---
+# Inicjujemy stronę startową, jeśli jeszcze jej nie ma w stanie sesji
 if "page" not in st.session_state:
     st.session_state.page = "game1_intro"
 
+# Ustawiamy stan gry na wartości początkowe
 def init_game_state():
     st.session_state.g1_round = 0
     st.session_state.g1_capital = 10000.0
@@ -221,6 +231,7 @@ def init_game_state():
 
     st.session_state.g1_decisions = []
 
+# Zapewniamy, że zwroty na kolejne rundy są już wylosowane
 def ensure_round_returns(next_round_index: int):
     while len(st.session_state.returns_sp) < next_round_index:
         st.session_state.returns_sp.append(sample_return("SP500"))
@@ -229,6 +240,7 @@ def ensure_round_returns(next_round_index: int):
     while len(st.session_state.returns_btc) < next_round_index:
         st.session_state.returns_btc.append(sample_return("BTC"))
 
+# Aktualizujemy wyniki benchmarków na podstawie wylosowanych zwrotów
 def apply_benchmarks(next_round_index: int):
     r_sp = st.session_state.returns_sp[next_round_index - 1]
     r_gold = st.session_state.returns_gold[next_round_index - 1]
@@ -238,6 +250,7 @@ def apply_benchmarks(next_round_index: int):
     st.session_state.hist_gold.append(st.session_state.hist_gold[-1] * (1 + r_gold))
     st.session_state.hist_btc.append(st.session_state.hist_btc[-1] * (1 + r_btc))
 
+# Budujemy jedno zdanie podsumowania profilu inwestora
 def investor_sentence(rationality: int, risk: int) -> str:
     if rationality < 35:
         r_txt = "mało racjonalnym"
@@ -261,6 +274,7 @@ def investor_sentence(rationality: int, risk: int) -> str:
         f"Twoje decyzje sugerują styl: {style}."
     )
 
+# Liczymy ocenę gracza na podstawie historii decyzji
 def compute_player_scores():
     decisions = st.session_state.get("g1_decisions", [])
     if not decisions:
@@ -577,7 +591,7 @@ def show_game1_summary():
         st.session_state.page = "game1_intro"
         st.rerun()
 
-# --- ROUTER ---
+# Router stron aplikacji
 if st.session_state.page == "game1_intro":
     show_game1_intro()
 elif st.session_state.page == "game1":
